@@ -101,7 +101,12 @@ class PointLocator:
         sbuf = (x, mpi.BYTE) if x is not mpi.IN_PLACE else x
         rbuf = (y, mpi.BYTE)
 
-        coll(sbuf, rbuf, op=autofree(mpi.Op.Create(op, commute=False)))
+        #coll(sbuf, rbuf, op=autofree(mpi.Op.Create(op, commute=False)))
+        mop = mpi.Op.Create(op, commute=False)
+        try:
+            coll(sbuf, rbuf, op=mop)
+        finally:
+            mop.Free()
 
     @memoize
     def _get_nodes_off_tree(self):
@@ -125,7 +130,6 @@ class PointLocator:
         smin, smax = spts.min(axis=0), spts.max(axis=0)
 
         # Expand by the scale factor to better account for strong curvature
-        #expand = (0.5*(scale - 1))*abs(smin + smax)
         expand = (scale - 1)*(smax - smin)
         smin -= expand
         smax += expand
