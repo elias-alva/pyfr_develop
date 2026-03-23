@@ -1,5 +1,6 @@
 from pyfr.plugins.ascent import AscentPlugin
 from pyfr.plugins.alm import ALMPlugin
+from pyfr.plugins.almdev3_v2 import ALMPlugindev3_v2
 from pyfr.plugins.base import (BaseCLIPlugin, BasePlugin, BaseSolnPlugin,
                                BaseSolverPlugin)
 from pyfr.plugins.dtstats import DtStatsPlugin
