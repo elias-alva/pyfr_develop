@@ -20,12 +20,13 @@ def pitch(r):
     # print(data[:5])
     # print(data[:,0])
     # print(data[:,3])
-    local_pitch = np.atan([data[:,2]/(2*np.pi*data[:,0])]) 
+    local_pitch = np.atan([data[:,2]/(2*np.pi*data[:,0])])
+    local_pitch = data[:,7]*np.pi/180
     # print(local_pitch*180/np.pi)
     # print((data[:,0]*2.54/100))
-    xp = np.asarray(data[:,0]*2.54/100, dtype=float).ravel()
+    xp = np.asarray(data[:,0], dtype=float).ravel()
     fp1 = np.asarray(local_pitch, dtype=float).ravel()
-    fp2 = np.asarray(data[:,1]*2.54/100, dtype=float).ravel()
+    fp2 = np.asarray(data[:,1], dtype=float).ravel()
     rinf = np.array(r[:-1])
     rsup = np.array(r[1:])
     dr = rsup-rinf
@@ -33,4 +34,5 @@ def pitch(r):
     pitch = np.interp(r, xp,fp1)
     lchord = np.interp(r, xp,fp2)
 
-    return pitch,lchord, dr
+    return pitch,lchord
+

@@ -105,8 +105,17 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
         self.mu = self.cfg.getfloat(cfgsect,'mu')
         # r_scalar = self.cfg.getfloat(cfgsect, 'r')
         # th0 = self.cfg.getliteral(cfgsect, 'thet0')
-        r_sample = np.array(self.cfg.getliteral(cfgsect, 'r'))
+        #####
+        #r_sample = np.array(self.cfg.getliteral(cfgsect, 'r'))
         theta_blades = np.array(self.cfg.getliteral(cfgsect, 'thet0'))
+        #####
+        r_ini = np.array(self.cfg.getfloat(cfgsect, 'r_ini'))
+        r_end = np.array(self.cfg.getfloat(cfgsect, 'r_end'))
+        n_ap = np.array(self.cfg.getfloat(cfgsect, 'n_actuator_points'))
+        n_sample = np.linspace(r_ini,r_end,int(n_ap)+1)
+        r_sample = (n_sample[:-1] + n_sample[1:])/2
+        self.dr = np.ones(int(n_ap)*2)*(n_sample[1] - n_sample[0])
+
         
         # self.c = self.cfg.getfloat(cfgsect, 'chord')
         n_blades = len(theta_blades)
@@ -117,7 +126,7 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
         r = np.tile(r_sample, n_blades)
         thetas0 = np.repeat(theta_blades, n_pts_per_blade)
 
-        self.betas, self.c, self.dr = betas.pitch(r)
+        self.betas, self.c = betas.pitch(r)
 
         # List of points to be sampled and format
         # pts = self.cfg.getliteral(cfgsect, 'samp-pts')
@@ -134,7 +143,7 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
                for r0, th0 in zip(r, thetas0)]
         self.omegar = omega*r
 
-        self.macro_params = {'eph': e,'eph2': 1/e**2, 'ephpi3': 1/e**3/(np.pi)**(3/2), 'r': r,'npts':npts}
+        self.macro_params = {'eph': e,'eph2': 1/e**2, 'ephpi3': 1/e**2/(np.pi)**(3/2), 'r': r,'npts':npts} # check/fix ^2 in ephpi3
 
 
     def __call__(self, intg):
@@ -225,8 +234,8 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
         Cl_int, Cd_int = C13x6.clcd13x6(alpha*180/np.pi,re_l)
         Cl = Cl_int/np.sqrt(1-Vrel2*self.M*self.M)
         Cd = Cd_int/np.sqrt(1-Vrel2*self.M*self.M)
-        L = 0.5*rho*Vrel2**2*self.c*Cl*self.dr
-        D = 0.5*rho*Vrel2**2*self.c*Cd*self.dr  #------> Vrel = (rho*u)**2
+        L = 0.5*rho*Vrel2*self.c*Cl*self.dr
+        D = 0.5*rho*Vrel2*self.c*Cd*self.dr  #------> Vrel = (rho*u)**2
 
         # Actuator line forces
         Fetheta = D* np.cos(phi) + L*np.sin(phi)
@@ -257,7 +266,7 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
                         f"{Fx[i]:.8e} {Fy[i]:.8e} {Fz[i]:.8e} "
                         f"{alpha[i]:.8e} "
                         f"{rho[i]:.8e} {Udns[i]:.8e} {Vdns[i]:.8e} {Wdns[i]:.8e} "
-                        # f"{uu[i]:.8e} {vv[i]:.8e} "
+                        f"{Fetheta[i]:.8e} "
                         f"{re_l[i]:.8e} {self.c[i]:.8e} "
                         f"{Py[i]:.8e} {Pz[i]:.8e}\n"
                     )
