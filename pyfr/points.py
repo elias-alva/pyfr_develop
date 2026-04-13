@@ -97,6 +97,7 @@ class PointLocator:
                 emask &= p[f] == q[f]
 
             q[lmask] = p[lmask]
+            print(len(pmem), dtype.itemsize)
 
         sbuf = (x, mpi.BYTE) if x is not mpi.IN_PLACE else x
         rbuf = (y, mpi.BYTE)

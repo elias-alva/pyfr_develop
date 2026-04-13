@@ -13,8 +13,8 @@ from pyfr.plugins.sampler import _process_con_to_pri
 
 ALMInfo = namedtuple('alminfo', ['nloc', 'forc'])
 
-class ALMPlugindev3_v2(BaseSolverPlugin):
-    name = 'almdev3_v2'
+class ALMPlugindev3_test(BaseSolverPlugin):
+    name = 'almdev3_test'
     systems = ['*']
     formulations = ['dual', 'std']
     dimensions = [2, 3]
@@ -33,10 +33,9 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
         
         # force files
         self.force_files = [f"force_point_{i:03d}.txt" for i in range(len(self.pts))]
-        if self.rank == 0:
-            for fname in self.force_files:
-                with open(fname, 'w') as f:
-                    f.write("     t           Fx              Fy             Fz           alpha            rho            Udns            Vdns           Wdns         omegar        Ftheta           thetan \n")
+        for fname in self.force_files:
+            with open(fname, 'w') as f:
+                f.write("   t           Fx            Fy               Fz         alpha    rho      Udns     Vdns     Wdns    omegar   Ftheta    re_l        Vrel        c(r)      Py       Pz\n")
 
         # Data format for ALM calculations
         self._process = _process_con_to_pri(self.elementscls, self.ndims,
@@ -99,12 +98,10 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
 
     def _init_param(self, cfgsect):
 
-        comm, rank, root = get_comm_rank_root()
-        self.rank = rank
-
         # Alm parameters
         e = self.cfg.getfloat(cfgsect, 'e')
         omega = self.cfg.getfloat(cfgsect, 'omega')
+        self.omega = omega
         self.M = self.cfg.getfloat(cfgsect,'M')
         self.mu = self.cfg.getfloat(cfgsect,'mu')
         # r_scalar = self.cfg.getfloat(cfgsect, 'r')
@@ -167,17 +164,16 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
         self.told = intg.tcurr
         
         # Update locations for body forces in N-S
-        # self._advance_positions(intg)
+        self._advance_positions(intg)
 
 
 
     def _update_solution(self, intg): #where is the point, what is the solution associated to this
         # New location
-        t = intg.tcurr
-        #self.pts[0][1] = self.h(intg.tcurr)
-        for i in range(len(self.pts)):
-            self.pts[i][1] = self.yy[i](t)
-            self.pts[i][2] = self.zz[i](t)
+        # self.pts[0][1] = self.h(intg.tcurr)
+        # for i in range(len(self.pts)):
+        #     self.pts[i][1] = self.yy[i](intg.tcurr)
+        #     self.pts[i][2] = self.zz[i](intg.tcurr)
 
         # Locate the new point list
         locs = self.plocator.locate(self.pts)[self.locf]
@@ -196,13 +192,13 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
 
         return samps
     
-   #def _advance_positions(self, intg):
-   #     for i, th in enumerate(self.thetas):
-   #         theta_new = th(intg.tcurr + intg._dt)
-   #         r = np.linalg.norm(self.pts[i][1:3])
-   #         self.pts[i][1] = r * np.cos(theta_new)
-   #         self.pts[i][2] = r * np.sin(theta_new)
-   #         # self.pts[i][0] = 0 # rotor plane
+    def _advance_positions(self, intg):
+        for i, th in enumerate(self.thetas):
+            theta_new = th(intg.tcurr + intg._dt)
+            r = np.linalg.norm(self.pts[i][1:3])
+            self.pts[i][1] = r * np.cos(theta_new)
+            self.pts[i][2] = r * np.sin(theta_new)
+            # self.pts[i][0] = 0 # rotor plane
 
     def _update_forc(self, intg): 
         #comm, rank, root = get_comm_rank_root()
@@ -227,7 +223,7 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
 
         # relative AoA(phi) and effective AoA(alpha)
         phi = np.arctan2((Udns),(self.omegar + Vdns*np.sin(thetan) -Wdns*np.cos(thetan)))
-        alpha = self.betas - phi
+        alpha = self.betas - phi   ##-alpha do Brand.
 
         # Relative velocity square
         Vrel2 = (Udns)**2 + (self.omegar + Vdns*np.sin(thetan) -Wdns*np.cos(thetan))**2
@@ -239,12 +235,13 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
         Cl_int, Cd_int = C13x6.clcd13x6(alpha*180/np.pi,re_l)
         Cl = Cl_int/np.sqrt(1-Vrel2)
         Cd = Cd_int/np.sqrt(1-Vrel2)
-        L = 0.5*rho*Vrel2*self.c*Cl*self.dr
-        D = 0.5*rho*Vrel2*self.c*Cd*self.dr  #------> Vrel = (rho*u)**2
+        #L = 0.5*rho*Vrel2*self.c*Cl*self.dr
+        L = 0.5*rho*Vrel*11.35*0.1*self.dr*self.omega*75*self.c/self.c*0
+        D = 0.5*rho*Vrel*11.35*0.05*self.dr*self.omega*75*self.c/self.c  #------> Vrel = (rho*u)**2
 
         # Actuator line forces
         Fetheta = D* np.cos(phi) + L*np.sin(phi)
-        Fx = -L*np.cos(phi) + D*np.sin(phi)    #### sign changed
+        Fx = -L*np.cos(phi) + D*np.sin(phi) ## troca de signo a D e L --------------------------------------------------------------------------
         Fy = Fetheta*np.sin(thetan)
         Fz = -Fetheta*np.cos(thetan)
         # forcx = np.pi*rho*Vrel*self.c*alpha*np.sin(alpha)/np.sqrt(1-self.M*self.M) ########################################## cambiado
@@ -263,17 +260,17 @@ class ALMPlugindev3_v2(BaseSolverPlugin):
         self.forc[:,1] = -Fy
         self.forc[:,2] = -Fz
         
-        if self.rank ==0 and intg.nacptsteps % 5 == 0:
+        if intg.nacptsteps % 5 == 0:
             for i in range(len(self.pts)):
                 with open(self.force_files[i], 'a') as f:
                     line_to_write = (
-                        f"{intg.tcurr:.16f} "
-                        f"{Fx[i]:.16e} {Fy[i]:.16e} {Fz[i]:.16e} "
-                        f"{alpha[i]:.16e} "
-                        f"{rho[i]:.16e} {Udns[i]:.16e} {Vdns[i]:.16e} {Wdns[i]:.16e} "
-                        f"{self.omegar[i]:.16e} {Fetheta[i]:.16e} {thetan[i]:.16e}\n"
-                       # f"{re_l[i]:.2e} {Vrel[i]:2e} {self.c[i]:.2e} "
-                       # f"{Py[i]:.2e} {Pz[i]:.2e} {self.dr[i]:.2e} \n"
+                        f"{intg.tcurr:.6f} "
+                        f"{Fx[i]:.8e} {Fy[i]:.8e} {Fz[i]:.8e} "
+                        f"{alpha[i]:.2e} "
+                        f"{rho[i]:.2e} {Udns[i]:.2e} {Vdns[i]:.2e} {Wdns[i]:.2e} "
+                        f"{self.omegar[i]:.2e} {Fetheta[i]:.2e} "
+                        f"{re_l[i]:.2e} {Vrel[i]:2e} {self.c[i]:.2e} "
+                        f"{Py[i]:.2e} {Pz[i]:.2e} {self.dr[i]:.2e} \n"
                     )
                     f.write(line_to_write)
         

@@ -20,7 +20,7 @@ def pitch(r):
     # print(data[:5])
     # print(data[:,0])
     # print(data[:,3])
-    local_pitch = np.atan([data[:,2]/(2*np.pi*data[:,0])])
+    #local_pitch = np.atan([data[:,2]/(2*np.pi*data[:,0])])
     local_pitch = data[:,7]*np.pi/180
     # print(local_pitch*180/np.pi)
     # print((data[:,0]*2.54/100))

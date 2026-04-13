@@ -92,6 +92,8 @@ class ALMPlugin(BaseSolverPlugin):
         # List of points to be sampled and format
         pts = self.cfg.getliteral(cfgsect, 'samp-pts')
         self.pts = np.array(pts)
+        comm, rank, root = get_comm_rank_root()
+        self.rank = rank
 
         # Alm parameters
         e = self.cfg.getfloat(cfgsect, 'e')
@@ -171,8 +173,8 @@ class ALMPlugin(BaseSolverPlugin):
         forcx = np.pi*rho*Vrel2*self.c*alpha*np.sin(alpha)/np.sqrt(1-self.M*self.M) ########################################## cambiado
         forcy = np.pi*rho*Vrel2*self.c*alpha*np.cos(alpha)/np.sqrt(1-self.M*self.M) ########################################## cambiado
         fqs = np.pi*rho*self.c*Vrel2*(-vh)/Udns/np.sqrt(1-self.M*self.M)
-
-        if forcx:
+        
+        if self.rank == 0 and forcx is not None:
             with open('force_file2.txt','a') as f:
                 line_to_write = f"{intg.tcurr:.4f} {forcx:.8f} {forcy:.8f} {fqs:.8f} {hh:.8f} {vh:.8f} {alpha:.8f} {rho:.8f} {Vdns:.8f} {Udns:.8f}\n"
                 f.write(line_to_write)
